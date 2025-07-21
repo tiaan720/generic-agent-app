@@ -2,6 +2,9 @@
 import pathlib
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+import pathlib
+load_dotenv(dotenv_path=pathlib.Path(__file__).parent.parent / ".env")
 
 # Define the FastAPI app
 app = FastAPI()
