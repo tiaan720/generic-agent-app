@@ -5,8 +5,11 @@ import { ProcessedEvent } from "@/components/ActivityTimeline";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ChatMessagesView } from "@/components/ChatMessagesView";
 import { Button } from "@/components/ui/button";
+import { AgentInfo, GenericEventProcessor } from "@/lib/agent-types";
 
 export default function App() {
+  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
+  const [eventProcessor, setEventProcessor] = useState<GenericEventProcessor | null>(null);
   const [processedEventsTimeline, setProcessedEventsTimeline] = useState<
     ProcessedEvent[]
   >([]);
@@ -16,51 +19,44 @@ export default function App() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  
   const thread = useStream<{
     messages: Message[];
   }>({
     apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
       : "http://localhost:8123",
-    assistantId: "agent",
+    assistantId: selectedAgent?.id || "agent", // Dynamic agent selection
     messagesKey: "messages",
     onUpdateEvent: (event: any) => {
-      console.log("Received event:", event); // Debug logging
-      let processedEvent: ProcessedEvent | null = null;
+      if (!eventProcessor) return;
       
-      // Handle dummy agent events
-      if (event.dummy_agent) {
-        processedEvent = {
-          title: "Processing Math Query",
-          data: "Agent is selecting the appropriate calculator tool",
-        };
-      }
-      // Also handle any tool calls or agent steps
-      else if (event.__start__) {
-        processedEvent = {
-          title: "Starting Math Assistant",
-          data: "Initializing dummy agent to process your query",
-        };
-      }
-      else if (event.__end__) {
-        processedEvent = {
-          title: "Math Problem Solved",
-          data: "Successfully calculated the result using the appropriate tool",
-        };
-        hasFinalizeEventOccurredRef.current = true;
-      }
+      const processedEvent = eventProcessor.processEvent(event);
       
       if (processedEvent) {
         setProcessedEventsTimeline((prevEvents) => [
           ...prevEvents,
-          processedEvent!,
+          processedEvent,
         ]);
+        
+        // Check for finalization events
+        if (processedEvent.title.toLowerCase().includes("complete") || 
+            event.__end__) {
+          hasFinalizeEventOccurredRef.current = true;
+        }
       }
     },
     onError: (error: any) => {
       setError(error.message);
     },
   });
+
+  // Initialize event processor when agent is selected
+  useEffect(() => {
+    if (selectedAgent) {
+      setEventProcessor(new GenericEventProcessor(selectedAgent));
+    }
+  }, [selectedAgent]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -90,16 +86,23 @@ export default function App() {
   }, [thread.messages, thread.isLoading, processedEventsTimeline]);
 
   const handleSubmit = useCallback(
-    (submittedInputValue: string, _effort: string, _model: string) => {
+    (submittedInputValue: string, _effort: string, _model: string, agent: AgentInfo) => {
       if (!submittedInputValue.trim()) return;
+      
+      // Update selected agent if it changed
+      if (!selectedAgent || selectedAgent.id !== agent.id) {
+        setSelectedAgent(agent);
+      }
+      
       setProcessedEventsTimeline([]);
       hasFinalizeEventOccurredRef.current = false;
 
-      // Add an initial processing event
+      // Add an initial processing event using the selected agent's info
       setProcessedEventsTimeline([
         {
-          title: "Starting Math Assistant",
-          data: `Analyzing query: "${submittedInputValue}" - determining which math operation to use`,
+          title: `Starting ${agent.name}`,
+          data: `Analyzing query: "${submittedInputValue}" - ${agent.description.toLowerCase()}`,
+          icon: agent.icon,
         },
       ]);
 
@@ -112,12 +115,12 @@ export default function App() {
         },
       ];
       
-      // Simplified submission for dummy agent - no complex config needed
+      // Submit to the selected agent
       thread.submit({
         messages: newMessages,
       });
     },
-    [thread]
+    [thread, selectedAgent]
   );
 
   const handleCancel = useCallback(() => {
@@ -125,40 +128,52 @@ export default function App() {
     window.location.reload();
   }, [thread]);
 
+  const handleAgentChange = useCallback((agent: AgentInfo) => {
+    setSelectedAgent(agent);
+    setProcessedEventsTimeline([]);
+    setHistoricalActivities({});
+    setError(null);
+  }, []);
+
   return (
     <div className="flex h-screen bg-neutral-800 text-neutral-100 font-sans antialiased">
       <main className="h-full w-full max-w-4xl mx-auto">
-          {thread.messages.length === 0 ? (
-            <WelcomeScreen
-              handleSubmit={handleSubmit}
-              isLoading={thread.isLoading}
-              onCancel={handleCancel}
-            />
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="flex flex-col items-center justify-center gap-4">
-                <h1 className="text-2xl text-red-400 font-bold">Error</h1>
-                <p className="text-red-400">{JSON.stringify(error)}</p>
-
-                <Button
-                  variant="destructive"
-                  onClick={() => window.location.reload()}
-                >
-                  Retry
-                </Button>
-              </div>
+        {thread.messages.length === 0 ? (
+          <WelcomeScreen
+            handleSubmit={handleSubmit}
+            isLoading={thread.isLoading}
+            onCancel={handleCancel}
+            selectedAgent={selectedAgent}
+            onAgentChange={handleAgentChange}
+          />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <h1 className="text-2xl text-red-400 font-bold">Error</h1>
+              <p className="text-red-400">{JSON.stringify(error)}</p>
+              <Button
+                variant="destructive"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
             </div>
-          ) : (
-            <ChatMessagesView
-              messages={thread.messages}
-              isLoading={thread.isLoading}
-              scrollAreaRef={scrollAreaRef}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              liveActivityEvents={processedEventsTimeline}
-              historicalActivities={historicalActivities}
-            />
-          )}
+          </div>
+        ) : (
+          <ChatMessagesView
+            messages={thread.messages}
+            isLoading={thread.isLoading}
+            scrollAreaRef={scrollAreaRef}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            liveActivityEvents={processedEventsTimeline}
+            historicalActivities={historicalActivities}
+            agentName={selectedAgent?.name || "Assistant"}
+            agentColor={selectedAgent?.primary_color || "#3b82f6"}
+            selectedAgent={selectedAgent}
+            onAgentChange={handleAgentChange}
+          />
+        )}
       </main>
     </div>
   );

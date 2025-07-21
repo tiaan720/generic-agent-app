@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   ActivityTimeline,
   ProcessedEvent,
-} from "@/components/ActivityTimeline"; // Assuming ActivityTimeline is in the same dir or adjust path
+} from "@/components/ActivityTimeline";
+import { AgentInfo } from "@/lib/agent-types";
 
 // Markdown component props type from former ReportView
 type MdComponentProps = {
@@ -168,6 +169,8 @@ interface AiMessageBubbleProps {
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
   copiedMessageId: string | null;
+  agentName: string;
+  agentColor: string;
 }
 
 // AiMessageBubble Component
@@ -180,6 +183,8 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   mdComponents,
   handleCopy,
   copiedMessageId,
+  agentName,
+  agentColor,
 }) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
@@ -193,6 +198,8 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           <ActivityTimeline
             processedEvents={activityForThisBubble}
             isLoading={isLiveActivityForThisBubble}
+            agentName={agentName}
+            agentColor={agentColor}
           />
         </div>
       )}
@@ -228,10 +235,14 @@ interface ChatMessagesViewProps {
   messages: Message[];
   isLoading: boolean;
   scrollAreaRef: React.RefObject<HTMLDivElement | null>;
-  onSubmit: (inputValue: string, effort: string, model: string) => void;
+  onSubmit: (inputValue: string, effort: string, model: string, agent: AgentInfo) => void;
   onCancel: () => void;
   liveActivityEvents: ProcessedEvent[];
   historicalActivities: Record<string, ProcessedEvent[]>;
+  agentName?: string;  // Dynamic agent name
+  agentColor?: string; // Dynamic agent color
+  selectedAgent?: AgentInfo | null;
+  onAgentChange?: (agent: AgentInfo) => void;
 }
 
 export function ChatMessagesView({
@@ -242,6 +253,8 @@ export function ChatMessagesView({
   onCancel,
   liveActivityEvents,
   historicalActivities,
+  agentName = "Assistant",
+  agentColor = "#3b82f6",
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -282,6 +295,8 @@ export function ChatMessagesView({
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
                       copiedMessageId={copiedMessageId}
+                      agentName={agentName}
+                      agentColor={agentColor}
                     />
                   )}
                 </div>
@@ -300,6 +315,8 @@ export function ChatMessagesView({
                       <ActivityTimeline
                         processedEvents={liveActivityEvents}
                         isLoading={true}
+                        agentName={agentName}
+                        agentColor={agentColor}
                       />
                     </div>
                   ) : (

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
+import { Brain, Send, StopCircle, Zap, Cpu, Bot, SquarePen } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -9,13 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AgentInfo, fetchAgents } from "@/lib/agent-types";
 
 // Updated InputFormProps
 interface InputFormProps {
-  onSubmit: (inputValue: string, effort: string, model: string) => void;
+  onSubmit: (inputValue: string, effort: string, model: string, agent: AgentInfo) => void;
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
+  selectedAgent?: AgentInfo | null;
+  onAgentChange?: (agent: AgentInfo) => void;
 }
 
 export const InputForm: React.FC<InputFormProps> = ({
@@ -23,16 +26,47 @@ export const InputForm: React.FC<InputFormProps> = ({
   onCancel,
   isLoading,
   hasHistory,
+  selectedAgent,
+  onAgentChange,
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
   const [model, setModel] = useState("gemini-2.5-flash-preview-04-17");
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [currentAgent, setCurrentAgent] = useState<AgentInfo | null>(selectedAgent || null);
+
+  // Load agents on component mount
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const response = await fetchAgents();
+        setAgents(response.agents);
+        // Set default agent if none selected
+        if (!currentAgent && response.agents.length > 0) {
+          const defaultAgent = response.agents[0];
+          setCurrentAgent(defaultAgent);
+          onAgentChange?.(defaultAgent);
+        }
+      } catch (error) {
+        console.error("Failed to load agents:", error);
+      }
+    };
+    loadAgents();
+  }, [currentAgent, onAgentChange]);
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!internalInputValue.trim()) return;
-    onSubmit(internalInputValue, effort, model);
+    if (!internalInputValue.trim() || !currentAgent) return;
+    onSubmit(internalInputValue, effort, model, currentAgent);
     setInternalInputValue("");
+  };
+
+  const handleAgentChange = (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) {
+      setCurrentAgent(agent);
+      onAgentChange?.(agent);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -94,6 +128,28 @@ export const InputForm: React.FC<InputFormProps> = ({
       </div>
       <div className="flex items-center justify-between">
         <div className="flex flex-row gap-2">
+          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
+            <div className="flex flex-row items-center text-sm">
+              <Bot className="h-4 w-4 mr-2" />
+              Agent
+            </div>
+            <Select value={currentAgent?.id || ""} onValueChange={handleAgentChange}>
+              <SelectTrigger className="w-[140px] bg-transparent border-none cursor-pointer">
+                <SelectValue placeholder="Select Agent" />
+              </SelectTrigger>
+              <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
+                {agents.map((agent) => (
+                  <SelectItem
+                    key={agent.id}
+                    value={agent.id}
+                    className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
+                  >
+                    <span style={{ color: agent.primary_color }}>{agent.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
             <div className="flex flex-row items-center text-sm">
               <Brain className="h-4 w-4 mr-2" />

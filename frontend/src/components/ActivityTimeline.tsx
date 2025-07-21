@@ -7,52 +7,42 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2,
-  Activity,
-  Info,
-  Search,
-  TextSearch,
-  Brain,
-  Pen,
   ChevronDown,
   ChevronUp,
-  Calculator,
+  Bot,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export interface ProcessedEvent {
   title: string;
   data: any;
+  icon?: string;
+  timestamp?: string;
 }
 
 interface ActivityTimelineProps {
   processedEvents: ProcessedEvent[];
   isLoading: boolean;
+  agentName?: string;  // Dynamic agent name
+  agentColor?: string; // Dynamic agent color
 }
 
 export function ActivityTimeline({
   processedEvents,
   isLoading,
+  agentName = "Assistant",
+  agentColor = "#3b82f6",
 }: ActivityTimelineProps) {
   const [isTimelineCollapsed, setIsTimelineCollapsed] =
     useState<boolean>(false);
-  const getEventIcon = (title: string, index: number) => {
+    
+  const getEventIcon = (_event: ProcessedEvent, index: number) => {
     if (index === 0 && isLoading && processedEvents.length === 0) {
       return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />;
     }
-    if (title.toLowerCase().includes("generating")) {
-      return <TextSearch className="h-4 w-4 text-neutral-400" />;
-    } else if (title.toLowerCase().includes("thinking")) {
-      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />;
-    } else if (title.toLowerCase().includes("reflection")) {
-      return <Brain className="h-4 w-4 text-neutral-400" />;
-    } else if (title.toLowerCase().includes("research")) {
-      return <Search className="h-4 w-4 text-neutral-400" />;
-    } else if (title.toLowerCase().includes("processing")) {
-      return <Calculator className="h-4 w-4 text-neutral-400" />;
-    } else if (title.toLowerCase().includes("finalizing")) {
-      return <Pen className="h-4 w-4 text-neutral-400" />;
-    }
-    return <Activity className="h-4 w-4 text-neutral-400" />;
+    
+    // Use Bot icon for all events for simplicity
+    return <Bot className="h-4 w-4 text-neutral-400" />;
   };
 
   useEffect(() => {
@@ -69,7 +59,11 @@ export function ActivityTimeline({
             className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
           >
-            Math Assistant
+            <div 
+              className="w-3 h-3 rounded-full mr-1"
+              style={{ backgroundColor: agentColor }}
+            />
+            {agentName}
             {isTimelineCollapsed ? (
               <ChevronDown className="h-4 w-4 mr-2" />
             ) : (
@@ -84,12 +78,15 @@ export function ActivityTimeline({
             {isLoading && processedEvents.length === 0 && (
               <div className="relative pl-8 pb-4">
                 <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
-                <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
-                  <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" />
+                <div 
+                  className="absolute left-0.5 top-2 h-5 w-5 rounded-full flex items-center justify-center ring-4 ring-neutral-900"
+                  style={{ backgroundColor: agentColor }}
+                >
+                  <Loader2 className="h-3 w-3 text-white animate-spin" />
                 </div>
                 <div>
                   <p className="text-sm text-neutral-300 font-medium">
-                    Searching...
+                    Starting {agentName}...
                   </p>
                 </div>
               </div>
@@ -102,8 +99,11 @@ export function ActivityTimeline({
                     (isLoading && index === processedEvents.length - 1) ? (
                       <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
                     ) : null}
-                    <div className="absolute left-0.5 top-2 h-6 w-6 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      {getEventIcon(eventItem.title, index)}
+                    <div 
+                      className="absolute left-0.5 top-2 h-6 w-6 rounded-full flex items-center justify-center ring-4 ring-neutral-700"
+                      style={{ backgroundColor: agentColor }}
+                    >
+                      {getEventIcon(eventItem, index)}
                     </div>
                     <div>
                       <p className="text-sm text-neutral-200 font-medium mb-0.5">
@@ -121,12 +121,15 @@ export function ActivityTimeline({
                 ))}
                 {isLoading && processedEvents.length > 0 && (
                   <div className="relative pl-8 pb-4">
-                    <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" />
+                    <div 
+                      className="absolute left-0.5 top-2 h-5 w-5 rounded-full flex items-center justify-center ring-4 ring-neutral-700"
+                      style={{ backgroundColor: agentColor }}
+                    >
+                      <Loader2 className="h-3 w-3 text-white animate-spin" />
                     </div>
                     <div>
                       <p className="text-sm text-neutral-300 font-medium">
-                        Searching...
+                        Processing...
                       </p>
                     </div>
                   </div>
@@ -134,7 +137,7 @@ export function ActivityTimeline({
               </div>
             ) : !isLoading ? ( // Only show "No activity" if not loading and no events
               <div className="flex flex-col items-center justify-center h-full text-neutral-500 pt-10">
-                <Info className="h-6 w-6 mb-3" />
+                <Bot className="h-6 w-6 mb-3" />
                 <p className="text-sm">No activity to display.</p>
                 <p className="text-xs text-neutral-600 mt-1">
                   Timeline will update during processing.
