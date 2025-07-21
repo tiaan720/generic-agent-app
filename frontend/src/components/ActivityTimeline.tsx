@@ -15,6 +15,7 @@ import {
   Pen,
   ChevronDown,
   ChevronUp,
+  Calculator,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -46,6 +47,8 @@ export function ActivityTimeline({
       return <Brain className="h-4 w-4 text-neutral-400" />;
     } else if (title.toLowerCase().includes("research")) {
       return <Search className="h-4 w-4 text-neutral-400" />;
+    } else if (title.toLowerCase().includes("processing")) {
+      return <Calculator className="h-4 w-4 text-neutral-400" />;
     } else if (title.toLowerCase().includes("finalizing")) {
       return <Pen className="h-4 w-4 text-neutral-400" />;
     }
@@ -66,7 +69,7 @@ export function ActivityTimeline({
             className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
           >
-            Research
+            Math Assistant
             {isTimelineCollapsed ? (
               <ChevronDown className="h-4 w-4 mr-2" />
             ) : (

@@ -18,9 +18,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const thread = useStream<{
     messages: Message[];
-    initial_search_query_count: number;
-    max_research_loops: number;
-    reasoning_model: string;
   }>({
     apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
@@ -28,37 +25,31 @@ export default function App() {
     assistantId: "agent",
     messagesKey: "messages",
     onUpdateEvent: (event: any) => {
+      console.log("Received event:", event); // Debug logging
       let processedEvent: ProcessedEvent | null = null;
-      if (event.generate_query) {
+      
+      // Handle dummy agent events
+      if (event.dummy_agent) {
         processedEvent = {
-          title: "Generating Search Queries",
-          data: event.generate_query?.search_query?.join(", ") || "",
+          title: "Processing Math Query",
+          data: "Agent is selecting the appropriate calculator tool",
         };
-      } else if (event.web_research) {
-        const sources = event.web_research.sources_gathered || [];
-        const numSources = sources.length;
-        const uniqueLabels = [
-          ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
-        ];
-        const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
+      }
+      // Also handle any tool calls or agent steps
+      else if (event.__start__) {
         processedEvent = {
-          title: "Web Research",
-          data: `Gathered ${numSources} sources. Related to: ${
-            exampleLabels || "N/A"
-          }.`,
+          title: "Starting Math Assistant",
+          data: "Initializing dummy agent to process your query",
         };
-      } else if (event.reflection) {
+      }
+      else if (event.__end__) {
         processedEvent = {
-          title: "Reflection",
-          data: "Analysing Web Research Results",
-        };
-      } else if (event.finalize_answer) {
-        processedEvent = {
-          title: "Finalizing Answer",
-          data: "Composing and presenting the final answer.",
+          title: "Math Problem Solved",
+          data: "Successfully calculated the result using the appropriate tool",
         };
         hasFinalizeEventOccurredRef.current = true;
       }
+      
       if (processedEvent) {
         setProcessedEventsTimeline((prevEvents) => [
           ...prevEvents,
@@ -84,7 +75,6 @@ export default function App() {
 
   useEffect(() => {
     if (
-      hasFinalizeEventOccurredRef.current &&
       !thread.isLoading &&
       thread.messages.length > 0
     ) {
@@ -100,31 +90,18 @@ export default function App() {
   }, [thread.messages, thread.isLoading, processedEventsTimeline]);
 
   const handleSubmit = useCallback(
-    (submittedInputValue: string, effort: string, model: string) => {
+    (submittedInputValue: string, _effort: string, _model: string) => {
       if (!submittedInputValue.trim()) return;
       setProcessedEventsTimeline([]);
       hasFinalizeEventOccurredRef.current = false;
 
-      // convert effort to, initial_search_query_count and max_research_loops
-      // low means max 1 loop and 1 query
-      // medium means max 3 loops and 3 queries
-      // high means max 10 loops and 5 queries
-      let initial_search_query_count = 0;
-      let max_research_loops = 0;
-      switch (effort) {
-        case "low":
-          initial_search_query_count = 1;
-          max_research_loops = 1;
-          break;
-        case "medium":
-          initial_search_query_count = 3;
-          max_research_loops = 3;
-          break;
-        case "high":
-          initial_search_query_count = 5;
-          max_research_loops = 10;
-          break;
-      }
+      // Add an initial processing event
+      setProcessedEventsTimeline([
+        {
+          title: "Starting Math Assistant",
+          data: `Analyzing query: "${submittedInputValue}" - determining which math operation to use`,
+        },
+      ]);
 
       const newMessages: Message[] = [
         ...(thread.messages || []),
@@ -134,11 +111,10 @@ export default function App() {
           id: Date.now().toString(),
         },
       ];
+      
+      // Simplified submission for dummy agent - no complex config needed
       thread.submit({
         messages: newMessages,
-        initial_search_query_count: initial_search_query_count,
-        max_research_loops: max_research_loops,
-        reasoning_model: model,
       });
     },
     [thread]

@@ -187,7 +187,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   const isLiveActivityForThisBubble = isLastMessage && isOverallLoading;
 
   return (
-    <div className={`relative break-words flex flex-col`}>
+    <div className={`relative break-words flex flex-col max-w-[85%] md:max-w-[80%] w-full`}>
       {activityForThisBubble && activityForThisBubble.length > 0 && (
         <div className="mb-3 border-b border-neutral-700 pb-3 text-xs">
           <ActivityTimeline
@@ -196,28 +196,30 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           />
         </div>
       )}
-      <ReactMarkdown components={mdComponents}>
-        {typeof message.content === "string"
-          ? message.content
-          : JSON.stringify(message.content)}
-      </ReactMarkdown>
-      <Button
-        variant="default"
-        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end ${
-          message.content.length > 0 ? "visible" : "hidden"
-        }`}
-        onClick={() =>
-          handleCopy(
-            typeof message.content === "string"
-              ? message.content
-              : JSON.stringify(message.content),
-            message.id!
-          )
-        }
-      >
-        {copiedMessageId === message.id ? "Copied" : "Copy"}
-        {copiedMessageId === message.id ? <CopyCheck /> : <Copy />}
-      </Button>
+      <div className="bg-neutral-800 text-neutral-100 rounded-xl p-3 shadow-sm rounded-bl-none">
+        <ReactMarkdown components={mdComponents}>
+          {typeof message.content === "string"
+            ? message.content
+            : JSON.stringify(message.content)}
+        </ReactMarkdown>
+        <Button
+          variant="default"
+          className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end mt-2 ${
+            message.content.length > 0 ? "visible" : "hidden"
+          }`}
+          onClick={() =>
+            handleCopy(
+              typeof message.content === "string"
+                ? message.content
+                : JSON.stringify(message.content),
+              message.id!
+            )
+          }
+        >
+          {copiedMessageId === message.id ? "Copied" : "Copy"}
+          {copiedMessageId === message.id ? <CopyCheck /> : <Copy />}
+        </Button>
+      </div>
     </div>
   );
 };
